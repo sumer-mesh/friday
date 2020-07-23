@@ -1,0 +1,2 @@
+# friday
+The automation assistant
