@@ -1,0 +1,94 @@
+- name: change name
+  raw: "hostnamectl set-hostname {{hostname|quote}}"
+  when: cluster == "true"
+
+- name: Update /etc/hosts
+  become: true
+  blockinfile:
+      path: /etc/hosts
+      create: yes
+      block: |
+        {% for item in ansible_play_batch %}
+        {{ hostvars[item].ansible_ssh_host }}   {{ hostvars[item].hostname }}
+        {% endfor %}
+  when: cluster == "true"
+  
+- name: Check rpm jdk install
+  shell: "rpm -qa|grep jdk"
+  args:
+      warn: no
+  register: check_jdk_rpm
+  ignore_errors: True
+
+- name: Check binary jdk install
+  shell: "echo $JAVA_HOME"
+  register: check_bin_jdk
+  ignore_errors: True
+
+- name: Unarchive jdk zip
+  unarchive:      
+    src: "{{ packagedir }}/jdk.zip"
+    dest: /tmp/
+  when: check_jdk_rpm.rc != 0 or check_bin_jdk.rc != 0
+
+- name: Install jdk component
+  yum:
+    name: 
+    - /tmp/jdk-8u231-linux-x64.rpmarchive
+    state: present
+  when: check_jdk_rpm.rc != 0 or check_bin_jdk.rc != 0
+
+- name: Unarchive elasticsearch zip
+  unarchive:      
+    src: "{{ packagedir }}/elasticsearch.zip"
+    dest: /tmp
+    
+- name: Install elasticsearch server
+  yum:
+    name: 
+    - /tmp/elasticsearch/elasticsearch-6.7.0.rpm
+    state: present
+
+#config elasticsearch
+- name: copy /etc/elasticsearch/elasticsearch.yml
+  template: 
+    src: elasticsearch_cluster.j2 
+    dest: /etc/elasticsearch/elasticsearch.yml
+  when: cluster == "true"
+
+- name: copy /etc/elasticsearch/elasticsearch.yml
+  template: 
+    src: elasticsearch.j2 
+    dest: /etc/elasticsearch/elasticsearch.yml
+  when: cluster == "false"
+
+- name: start elasticsearch service
+  systemd:
+    name: elasticsearch
+    state: started
+    enabled: yes
+
+- name: Update /etc/security/limits.conf
+  become: true
+  blockinfile:
+    path: /etc/security/limits.conf
+    create: yes
+    block: |
+      * hard memlock unlimited
+      * soft memlock unlimited
+  when: cluster == "true"
+
+- name: Update /etc/systemd/system.conf
+  become: true
+  blockinfile:
+    path: /etc/systemd/system.conf
+    create: yes
+    block: |
+      DefaultLimitNOFILE=65536
+      DefaultLimitNPROC=32000
+      DefaultLimitMEMLOCK=infinity
+  when: cluster == "true"
+
+- name: reload systemctl
+  command: /bin/systemctl daemon-reload
+  when: cluster == "true"

@@ -1,0 +1,8 @@
+mysql_root_password: "AAaa1234"
+mysql_port: "3306"
+mysql_datadir: "/var/lib/mysql"
+mysql_binlog_dir: "/var/lib/mysql/my-binlog"
+mysql_version: "5.7.23"
+server_id: "1"
+#如果为专用数据库主机，分配物理内存的80%为innodb缓冲池大小,否则设定使用三分之一.
+dedicated_host: False

@@ -1,0 +1,121 @@
+---
+- name: Set rc.local can be execution
+  file:
+    path: /etc/rc.d/rc.local
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Set timezone to Asia/Shanghai
+  lineinfile:
+    path: /etc/profile
+    regexp: "^export TZ="
+    line: 'export TZ="Asia/Shanghai"'
+
+- name: Set the datetime
+  shell: timedatectl set-local-rtc 1
+
+- name: Disable SELinux
+  selinux:
+    state: disabled
+#TODO Need to confirm the firewalld was closed
+# - name: Dsiable Firewalld
+#   systemd:
+#     state: stopped
+#     name: firewalld
+#     enabled: no
+#     masked: yes
+#   tags:
+#     - disable_firewalld
+
+- name: Add or modify nofile soft limit
+  pam_limits:
+    domain: "*"
+    limit_type: "-"
+    limit_item: nofile
+    value: "655360"
+
+- name: Set ipv4 forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: yes
+
+- name: yum-utils 
+  yum:
+    name: yum-utils
+    state: latest
+
+- name: device-mapper-persistent-data
+  yum:
+    name: device-mapper-persistent-data
+    state: latest
+
+- name: lvm2
+  yum:
+    name: lvm2
+    state: latest
+
+- name: install conntrack-tools
+  yum:
+    name: conntrack-tools
+    state: latest
+
+- name: Install ebtables
+  yum:
+    name: ebtables
+    state: latest
+
+- name: Install socat
+  yum:
+    name: socat
+    state: socat
+
+- name: Install ipset
+  yum:
+    name: ipset
+    state: latest
+
+- name: Add Docker repo
+  get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+  become: yes
+
+- name: Install Docker
+  package:
+    name: docker-ce
+    state: latest
+  become: yes
+
+- name: Start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Add user rancher to docker group
+  user:
+    name: rancher
+    uid: 1040
+    groups: [docker]
+    append: yes
+  become: yes
+
+- name: Setting the passwd for rancher
+  shell: echo rancher|passwd rancher --stdin
+
+#############################################
+# Example for deploying the offline enviroments
+# - name: add unzip rpm
+#   copy: 
+#     src: "unzip-6.0-20.el7.x86_64.rpm"
+#     dest: /tmp/unzip-6.0-20.el7.x86_64.rpm
+  
+# - name: yum install unzip
+#   yum:
+#     name:
+#     - /tmp/unzip-6.0-20.el7.x86_64.rpm
+#     state: present
+#############################################

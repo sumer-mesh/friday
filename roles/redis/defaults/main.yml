@@ -1,0 +1,8 @@
+---
+#redis_pass: ""
+#deploy_mode: offline
+redis_port: 6379
+redis_pidfile: /var/run/redis/redis.pid
+redis_logfile: /var/log/redis/redis.log
+redis_dbfilename: dump.rdb
+redis_dir: /var/lib/redis/

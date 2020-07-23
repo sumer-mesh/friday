@@ -1,0 +1,32 @@
+---
+# tasks file for confluent-kafka online
+- name: Add confluent-kafka repositories
+  yum_repository:
+    name: confluent-kafka
+    description: confluent-kafka local repo
+    file: kafka
+    baseurl: http://mirrors.i<your private repo>.com/rpms
+    gpgcheck: no
+    enabled: yes
+
+- name: jdk install
+  yum: 
+    name: "{{ jdk }}"
+    state: present
+
+- name: Install confluent-kafka service online
+  yum: 
+    name: "{{ kafka }}"  
+    state: present
+
+- name: confluent-zookeeper start
+  systemd:
+    state: started
+    name: confluent-zookeeper
+    enabled: yes
+
+- name: confluent-kafka start
+  systemd:
+    state: started
+    name: confluent-kafka
+    enabled: yes

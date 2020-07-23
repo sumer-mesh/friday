@@ -1,0 +1,11 @@
+[master]
+# 10.57.4.18 ansible_ssh_user=root  ansible_ssh_pass=  ansible_ssh_port=22
+
+[node]
+# 10.57.4.19 ansible_ssh_user=root  ansible_ssh_pass=  ansible_ssh_port=22
+
+
+
+[test]
+
+192.168.33.10 ansible_ssh_user="vagrant" ansible_ssh_private_key_file=/workspace/.vagrant/machines/default/virtualbox/private_key

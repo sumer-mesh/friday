@@ -1,0 +1,67 @@
+---
+- name: Add repo
+  yum_repository:
+    name: mysql
+    description: mysql YUM repo
+    file: mysql
+    baseurl: https://mirrors.tuna.tsinghua.edu.cn/mysql/yum/mysql57-community-el7/
+    gpgcheck: no
+    enabled: yes
+
+- name: Install mysql component
+  yum:
+    name:
+      - mysql-community-server
+      - mysql-community-common
+      - mysql-community-client
+      - mysql-community-libs-compat
+      - mysql-community-libs
+    state: present
+
+- name: Install mysql python
+  yum:
+    name: "MySQL-python"
+    state: present
+
+- name: Set conf
+  template:
+    src: my.cnf.j2
+    dest: /etc/my.cnf
+  notify: restart mysql
+
+- name: Start mysql server
+  systemd:
+    name: mysqld
+    state: started
+    enabled: yes
+
+- name: Check .my.cnf exists
+  stat:
+    path: /root/.my.cnf
+  register: mycnf_file
+
+- name: Get mysql temporary password
+  shell: awk '/temporary password/{print $NF}' /var/lib/mysql/mysql-error.log
+  register: mysql_default_password
+  when: not mycnf_file.stat.exists
+
+- name: Change password validation to the easy way
+  shell: |
+    mysql -u root -p'{{ mysql_default_password.stdout }}' --connect-expired-password -e "SET GLOBAL validate_password_length=8;"
+    mysql -u root -p'{{ mysql_default_password.stdout }}' --connect-expired-password -e "SET GLOBAL validate_password_policy=LOW;"
+  when: not mycnf_file.stat.exists
+  ignore_errors: yes
+
+- name: Change root user password
+  shell: |
+    mysql -u root -p'{{ mysql_default_password.stdout }}' --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{mysql_root_password}}';"
+  when: not mycnf_file.stat.exists
+
+- name: Deploy user .my.cnf
+  template:
+    src: user-my.cnf
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0644
+  when: not mycnf_file.stat.exists

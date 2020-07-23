@@ -1,0 +1,15 @@
+--- 
+- name: copy grafana package
+  unarchive: src={{packagedir}}/grafana-5.1.4.linux-x64.tar.gz  dest=/home/work/
+  become: true
+  become_user: work
+  become_method: sudo
+
+- name: start  grafana
+  shell: cd /home/work/grafana-5.1.4/ ; nohup ./bin/grafana-server >> /home/work/grafana-5.1.4/grafana.log &
+  become: true
+  become_user: work
+  become_method: sudo
+
+- name: wait for grafana start  
+  wait_for: port=3000

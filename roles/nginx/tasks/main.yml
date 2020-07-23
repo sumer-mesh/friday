@@ -1,0 +1,6 @@
+---
+- include: online-install.yml
+  when: deploy_mode is undefined or deploy_mode == 'online'
+
+- include: offline-install.yml
+  when: deploy_mode is defined and deploy_mode == 'offline'

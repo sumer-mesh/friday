@@ -1,0 +1,6 @@
+[<your private repo>]
+name=<your private repo> for Enterprise Linux 7
+baseurl={{<your private repo>_repo_baseurl}}
+gpgcheck=0
+enable=1
+

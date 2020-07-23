@@ -1,0 +1,86 @@
+---
+- name: Disable SELinux
+  selinux:
+    state: disabled
+
+- name: Disable firewalld
+  systemd:
+    name: firewalld
+    enabled: false
+    state: stopped
+    masked: true
+    scope: system
+
+- name: change name
+  raw: "hostnamectl set-hostname {{hostname|quote}}"
+  when: cluster == "true"
+
+- name: Update /etc/hosts
+  become: true
+  blockinfile:
+      path: /etc/hosts
+      create: yes
+      block: |
+        {% for item in ansible_play_batch %}
+        {{ hostvars[item].ansible_ssh_host }}   {{ hostvars[item].hostname }}
+        {% endfor %}
+  when: cluster == "true"
+
+- name: check mnesia
+  stat:
+    path: /var/lib/rabbitmq/mnesia
+  register: mnesia_result
+
+- name: removce mnesia
+  shell: rm -rf /var/lib/rabbitmq/mnesia
+  args:
+    warn: no
+  when: mnesia_result.stat.exists == true
+
+- name: Unarchive rabbitmq zip
+  unarchive:      
+    src: "{{ packagedir }}/rabbitmq.zip"
+    dest: /tmp/
+
+- name: Install rabbitmq server
+  shell: "yum localinstall -y /tmp/rabbitmq/*.rpm"  
+  args:
+    warn: no
+
+- name: start rabbitmq service
+  systemd:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+
+- name: enable rabbitmq web UI
+  shell: "rabbitmq-plugins enable rabbitmq_management"
+  become: yes
+
+- name: copy erlang cookie
+  template: 
+    src: erlang.cookie.j2 
+    dest: /var/lib/rabbitmq/.erlang.cookie
+    owner: rabbitmq 
+    group: rabbitmq
+    mode: 0600
+    backup: yes
+  when: cluster == "true"
+
+- name: restart rabbitmq service
+  systemd:
+    name: rabbitmq-server
+    state: restarted
+    enabled: yes
+
+- name: create user and vhost
+  shell: |
+    rabbitmqctl add_user admin admin
+    rabbitmqctl set_user_tags admin administrator
+    rabbitmqctl set_permissions -p / admin  ".*" ".*" ".*"
+    rabbitmqctl add_vhost /eventbustest
+    rabbitmqctl add_user eventuser @event2016
+    rabbitmqctl set_permissions -p /eventbustest eventuser ".*" ".*" ".*"
+  args:
+    warn: no
+  when: cluster == "false"

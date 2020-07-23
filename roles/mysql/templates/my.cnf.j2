@@ -1,0 +1,151 @@
+[mysqld]
+pid-file    = {{mysql_datadir}}/mysql.pid
+socket      = {{mysql_datadir}}/mysql.sock
+datadir     = {{mysql_datadir}}
+# By default we only accept connections from localhost
+#bind-address   = 127.0.0.1
+# Disabling symbolic-links is recommended to prevent assorted security risks
+#支持符号链接，就是可以通过软连接的方式，管理其他目录的数据库，最好不要开启，当一个磁盘或分区空间不够时，可以开启该参数将数据存储到其他的磁盘或分区。
+symbolic-links=0
+
+########basic settings########
+server-id = {{ server_id }}
+port = 3306
+user = mysql
+#设置autocommit=0，则用户将一直处于某个事务中，直到执行一条commit提交或rollback语句才会结束当前事务重新开始一个新的事务。set autocommit=0的好处是在频繁开启事务的场景下，减少一次begin的交互。
+#autocommit = 1
+#utf8mb4编码是utf8编码的超集，兼容utf8，并且能存储4字节的表情字符。
+#采用utf8mb4编码的好处是：存储与获取数据的时候，不用再考虑表情字符的编码与解码问题。
+character_set_server=utf8mb4
+#skip_name_resolve = 1
+max_connections = 800
+# 对于同一主机，如果有超出该参数值个数的中断错误连接，则该主机将被禁止连接。如需对该主机进行解禁，执行：FLUSH HOST。
+max_connect_errors = 1000
+#数据库隔离级别
+transaction_isolation = READ-COMMITTED
+#MySQL在完成某些join（连接）需求的时候，为了减少参与join的“被驱动表”的读取次数以提高性能，需要使用到join buffer来协助完成join操作当join buffer 太小，MySQL不会将该buffer存入磁盘文件而是先将join buffer中的结果与需求join的表进行操作，然后清空join buffer中的数据，继续将剩余的结果集写入次buffer中
+join_buffer_size = 128M
+tmp_table_size = 64M
+tmpdir = /tmp
+#该值设置过小将导致单个记录超过限制后写入数据库失败，且后续记录写入也将失败
+max_allowed_packet = 64M
+#mysql在关闭一个交互的连接之前所要等待的秒数
+interactive_timeout = 1200
+#mysql在关闭一个非交互的连接之前所要等待的秒数
+wait_timeout = 600
+#MySQL读入缓冲区的大小
+read_buffer_size = 16M
+#MySQL的随机读缓冲区大小
+read_rnd_buffer_size = 8M
+#MySQL的顺序读缓冲区大小
+sort_buffer_size = 8M
+########log settings########
+log-error = {{mysql_datadir}}/mysql-error.log
+#开启慢查询日志
+slow_query_log = 1
+#超出次设定值的SQL即被记录到慢查询日志
+long_query_time = 3
+slow_query_log_file = {{mysql_datadir}}/mysql-slow.log
+#表示记录下没有使用索引的查询
+log_queries_not_using_indexes = 1
+#记录管理语句
+log_slow_admin_statements = 1
+#开启复制从库复制的慢查询的日志
+#log_slow_slave_statements = 1
+#设置每分钟增长的没有使用索引查询的日志数量
+log_throttle_queries_not_using_indexes = 10
+#binlog过期时间,单位为天，超过设定值自动清理，防止磁盘空间占满.
+expire_logs_days = 7
+min_examined_row_limit = 100
+########replication settings########
+#将master.info和relay.info保存在表中
+master_info_repository = TABLE
+relay_log_info_repository = TABLE
+#bin-log路径。
+log-bin = {{mysql_binlog_dir}}
+#当每进行n次事务提交之后，MySQL将进行一次fsync之类的磁盘同步指令来将binlog_cache中的数据强制写入磁盘。设置为零是让系统自行决定
+sync_binlog = 5
+#开启全局事务ID，GTID能够保证让一个从服务器到其他的从服务器那里实现数据复制而且能够实现数据整合的
+#gtid_mode = on
+#开启gtid，必须主从全开
+#enforce_gtid_consistency = 1
+#从服务器的更新是否写入二进制日志
+#log_slave_updates = 1
+#三种模式 STATEMENT（有可能主从数据不一致，日质量小）、ROW（产生大量二进制日志）、MIXED
+binlog_format = mixed
+#relay-log日志记录的是从服务器I/O线程将主服务器的二进制日志读取过来记录到从服务器本地文件，然后SQL线程会读取relay-log日志的内容并应用到从服务器
+#relay_log = /var/lib/mysql/relay.log
+#relay_log_recovery = 1
+#开启简单gtid，开启此项会提升mysql执行恢复的性能
+#binlog_gtid_simple_recovery = 1
+#跳过主从同步错误.
+#slave_skip_errors = ddl_exist_errors
+########innodb settings########
+#这个参数在一开始初始化时就要加入my.cnf里，如果已经创建了表，再修改，启动MySQL会报错。最好为8K
+#innodb_page_size = 16K
+innodb_page_size = 8K
+#数据缓冲区buffer pool大小，如果是独立数据库主机使用物理内存的 80%, 否则使用3分之1。
+{% if dedicated_host %}
+innodb_buffer_pool_size = {{ (ansible_memtotal_mb * 0.8) | int }}M
+{% else %}
+innodb_buffer_pool_size = {{ ansible_memtotal_mb // 3 }}M
+{% endif %}
+#当buffer_pool的值较大的时候为1，较小的设置为8
+innodb_buffer_pool_instances = 8
+#运行时load缓冲池，快速预热缓冲池，将buffer pool的内容（文件页的索引）dump到文件中，然后快速load到buffer pool中。避免了数据库的预热过程，提高了应用访问的性能
+innodb_buffer_pool_load_at_startup = 1
+#运行时dump缓冲池
+innodb_buffer_pool_dump_at_shutdown = 1
+#在innodb中处理用户查询后，其结果在内存空间的缓冲池已经发生变化，但是还未记录到磁盘。这种页面称为脏页，将脏页记录到磁盘的过程称为刷脏
+innodb_lru_scan_depth = 2000
+innodb_io_capacity = 4000
+innodb_io_capacity_max = 8000
+#事务等待获取资源等待的最长时间，超过这个时间还未分配到资源则会返回应用失败，默认50s
+innodb_lock_wait_timeout = 30
+#日志组所在的路径，默认为data的home目录；
+#innodb_log_group_home_dir = /data/mysql/
+#innodb_undo_directory = /data/mysql/undolog/
+#这个参数控制着innodb数据文件及redo log的打开、刷写模式。
+#不经过系统缓存直接存入磁盘
+#innodb_flush_method = O_DIRECT
+innodb_file_format = Barracuda
+innodb_file_format_max = Barracuda
+innodb_strict_mode = 1
+#innodb独享表空间，有点很多，缺点会导致单个表文件过大
+#innodb_file_per_table = 1
+#undo日志回滚段 默认为128
+innodb_undo_logs = 128
+#传统机械硬盘建议使用，而对于固态硬盘可以关闭
+#innodb_flush_neighbors = 1
+innodb_log_file_size = 1G
+innodb_log_buffer_size = 64M
+#控制是否使用独立purge线程
+innodb_purge_threads = 1
+#改为ON时，允许单列索引最大达到3072。否则最大为767
+innodb_large_prefix = 1
+innodb_thread_concurrency = 8
+#开启后会将所有的死锁记录到error_log中
+innodb_print_all_deadlocks = 1
+innodb_sort_buffer_size = 16M
+########semi sync replication settings########
+#半同步复制
+plugin_load = "rpl_semi_sync_master=semisync_master.so;rpl_semi_sync_slave=semisync_slave.so"
+loose_rpl_semi_sync_master_enabled = 1
+loose_rpl_semi_sync_slave_enabled = 1
+loose_rpl_semi_sync_master_timeout = 5000
+#表示转储每个bp instance LRU上最热的page的百分比。通过设置该参数可以减少转储的page数。
+innodb_buffer_pool_dump_pct = 40
+#刷脏的进程N-1
+innodb_page_cleaners = 4
+innodb_undo_log_truncate = 1
+innodb_max_undo_log_size = 2G
+#控制回收(收缩)undo log的频率.undo log空间在它的回滚段没有得到释放之前不会收缩，
+innodb_purge_rseg_truncate_frequency = 128
+log_timestamps=system
+#该参数基于MySQL5.7 Group Replication组复制的，没有使用不要设置
+#transaction_write_set_extraction=MURMUR32
+show_compatibility_56=on
+
+[mysqld_safe]
+log-error={{mysql_datadir}}/mysql.log
+pid-file={{mysql_datadir}}/mysql.pid

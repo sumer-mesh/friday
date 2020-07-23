@@ -1,0 +1,8 @@
+<your private repo>_repo_baseurl: http://127.0.0.1:8080/
+
+# 支持用户设置fwdata的路径，然后/fwdata作为软链，兼容一些机器磁盘根目录存储小的问题
+# fwdata_dir: /home/fwdata
+
+
+#设置全局默认工作路径.
+home_workspace: /home/work

@@ -1,0 +1,18 @@
+cluster.name: elasticsearch
+{% if ansible_ssh_host in groups.master %}
+node.name: master
+{% elif ansible_ssh_host in groups.node1 %}
+node.name: node1
+{% elif ansible_ssh_host in groups.node2 %}
+node.name: node2
+{% endif %}
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+#bootstrap.memory_lock: true
+network.host: 0.0.0.0
+http.port: 9200
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+discovery.zen.ping.unicast.hosts: ["{{ groups.master[0] }}","{{ groups.node1[0] }}","{{ groups.node2[0] }}"]
+discovery.zen.minimum_master_nodes: 3
+#bootstrap.memory_lock: true

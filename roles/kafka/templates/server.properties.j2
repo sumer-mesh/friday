@@ -1,0 +1,14 @@
+{% if ansible_ssh_host in groups.master %}
+broker.id=1
+listeners=PLAINTEXT://{{ groups.master[0] }}:9092
+{% elif ansible_ssh_host in groups.node1 %}
+broker.id=2
+listeners=PLAINTEXT://{{ groups.node1[0] }}:9092
+{% elif ansible_ssh_host in groups.node2 %}
+broker.id=3
+listeners=PLAINTEXT://{{ groups.node2[0] }}:9092
+{% endif %}
+zookeeper.connect={{ groups.master[0] }}:2181,{{ groups.node1[0] }}:2181,{{ groups.node2[0] }}:2181
+num.partitions=3
+auto.create.topics.enable=true
+default.replication.factor=3

@@ -1,0 +1,11 @@
+---
+- name: add unzip rpm
+  copy: 
+    src: "unzip-6.0-20.el7.x86_64.rpm"
+    dest: /tmp/unzip-6.0-20.el7.x86_64.rpm
+
+- name: yum install unzip
+  yum:
+    name:
+    - /tmp/unzip-6.0-20.el7.x86_64.rpm
+    state: present

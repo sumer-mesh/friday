@@ -1,0 +1,22 @@
+---
+
+- name: Unarchive docker-ce zip
+  unarchive:      
+    src: "{{ packagedir }}/docker-ce.zip"
+    dest: /tmp/
+
+- name: Install docker-ce server offline
+  shell: yum localinstall -y /tmp/docker-ce/*.rpm
+  args:
+    warn: no
+
+- name: docker service start offline
+  systemd:
+    state: started
+    name: docker
+    enabled: yes
+  
+- name: clean all rpm after installed
+  shell: rm -rf /tmp/*.rpm
+  args:
+    warn: no

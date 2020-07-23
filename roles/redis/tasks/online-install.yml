@@ -1,0 +1,27 @@
+---
+- name: Add <your private repo> local yum repositories
+  yum_repository:
+    name: <your private repo>
+    description: <your private repo> Local YUM repo
+    file: <your private repo>
+    baseurl: http://mirrors.i<your private repo>.com/rpms/
+    gpgcheck: no
+    enabled: yes
+
+- name: Install redis server
+  yum:
+    name: redis
+    state: present
+
+- name: Set redis server password
+  lineinfile:
+    path: /etc/redis.conf
+    regexp: "^# requirepass.*"
+    line: "requirepass {{ redis_pass }}"
+  when: redis_pass is defined and redis_pass != ""
+
+- name: Start redis server
+  systemd:
+    name: redis
+    state: started
+    enabled: yes

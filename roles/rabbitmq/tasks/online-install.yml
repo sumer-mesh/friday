@@ -1,0 +1,38 @@
+---
+# tasks file for rabbitmq online
+- name: Add erlang repositories
+  yum_repository:
+    name: erlang
+    description: erlang  YUM repo
+    file: erlang
+    baseurl: https://packages.erlang-solutions.com/rpm/centos/7/x86_64
+    gpgcheck: no
+    enabled: yes
+
+- name: Install erlang online
+  yum:
+    name: erlang
+    state: present
+
+- name: Install rabbitmq server online
+  yum:
+    name: https://github.com/rabbitmq/rabbitmq-server/releases/download/v{{mq_version}}/rabbitmq-server-{{mq_version}}-1.el7.noarch.rpm
+    state: present
+  register: get_mq_install
+  ignore_errors: True
+
+- name: Install rabbitmq server from local repo
+  yum:
+    name: rabbitmq-server
+    state: present
+  when: get_mq_install is failed
+
+- name: rabbitmq service start
+  systemd:
+    state: started
+    name: rabbitmq-server
+    enabled: yes
+
+- name: enable rabbitmq web UI
+  shell: "rabbitmq-plugins enable rabbitmq_management"
+  become: yes

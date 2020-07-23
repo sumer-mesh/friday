@@ -1,0 +1,49 @@
+- name: Check rpm jdk install
+  shell: "rpm -qa|grep jdk"
+  failed_when: false
+  changed_when: false
+  register: check_jdk_rpm
+  ignore_errors: True
+
+- name: Check binary jdk install
+  shell: "echo $JAVA_HOME"
+  register: check_bin_jdk
+  ignore_errors: True
+
+- name: Unarchive jdk zip
+  unarchive:      
+    src: "{{ packagedir }}/jdk.zip"
+    dest: /tmp/
+  when: check_jdk_rpm.rc != 0 or check_bin_jdk.rc != 0
+
+- name: Install jdk component
+  yum:
+    name: 
+    - /tmp/jdk-8u231-linux-x64.rpm
+    state: present
+  when: check_jdk_rpm.rc != 0 or check_bin_jdk.rc != 0
+  
+- name: Unarchive kafka zip
+  unarchive:      
+    src: "{{ packagedir }}/kafka.zip"
+    dest: /tmp/
+
+- name: Install kafka server
+  yum:
+    name: 
+    - /tmp/confluent-kafka-2.12-5.3.1-1.noarch.rpm
+    state: present
+
+- name: start  confluent-zookeeper   service
+  systemd:
+    name: confluent-zookeeper
+    state: started
+    enabled: yes
+  when: cluster == "false"
+
+- name: start  confluent-kafka  service
+  systemd:
+    name: confluent-kafka
+    state: started
+    enabled: yes
+  when: cluster == "false"

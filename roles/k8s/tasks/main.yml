@@ -1,0 +1,180 @@
+---
+# tasks file for k8s
+
+- name: Disable swap in /etc/fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: "^UUID=(.*swap.*)"
+    line: '#UUID=\1'
+
+- name: Disable all swap
+  shell: "swapoff -a"
+
+- name: Disable SELinux
+  selinux:
+    state: disabled
+
+- name: Disable firewalld
+  systemd:
+    name: firewalld
+    enabled: false
+    state: stopped
+    masked: true
+    scope: system
+
+- name: Ensure docker is enable
+  systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Add ip with host mapping in hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ ansible_default_ipv4.address }}"
+    line: "{{ ansible_default_ipv4.address }}  {{ ansible_nodename }}"
+
+- name: Copy kernel config
+  copy:
+    src: k8s.conf
+    dest: /etc/sysctl.d/k8s.conf
+
+- name: Apply kernel paramater
+  shell: "sysctl -p"
+
+- name: Copy ipvs module config
+  copy:
+    src: ipvs.conf
+    dest: /etc/modules-load.d/ipvs.conf
+
+- name: Load the necessary parameters for use IPVS network model
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ip_vs
+    - ip_vs_rr
+    - ip_vs_sh
+    - ip_vs_wrr
+    - nf_conntrack
+
+- name: Add aliyun k8s yum repository
+  yum_repository:
+    name: kubernetes
+    description: kubernetes aliyun YUM repo
+    file: kubernetes
+    baseurl: https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+    gpgcheck: no
+    enabled: yes
+
+- name: Install kubernetes setup tools
+  yum:
+    name:
+      - kubelet-{{ k8s_version|regex_replace('v') }}
+      - kubeadm-{{ k8s_version|regex_replace('v') }}
+      - kubectl-{{ k8s_version|regex_replace('v') }}
+      - ipvsadm
+    state: present
+
+- name: Ensure kubelet is enabled
+  systemd:
+    name: kubelet
+    enabled: true
+    daemon_reload: yes
+    state: restarted
+    scope: system
+
+- name: Copy cluster initial config
+  template:
+    src: cluster-initial.j2
+    dest: /tmp/cluster-initial.yaml
+  when: inventory_hostname in groups['master']
+
+- name: Check cluster config exists
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_file
+  when: inventory_hostname in groups['master']
+
+- name: Check cluster already running
+  wait_for:
+    port: 6443
+    timeout: 5
+    msg: "The k8s cluster no running !"
+  register: port_check
+  ignore_errors: yes
+  when: inventory_hostname in groups['master']
+
+- name: Setup k8s cluster via kubeadm
+  shell: "kubeadm init --config /tmp/cluster-initial.yaml"
+  register: init_result
+  ignore_errors: True
+  when: inventory_hostname in groups['master'] and port_check.failed == true
+
+- name: Check cluster config exists
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_file
+  ignore_errors: yes
+  when: inventory_hostname in groups['master']
+
+- name: Ensure defalut config folder exists
+  file:
+    state: directory
+    path: /root/.kube
+  register: k8s_config_folder
+  ignore_errors: yes
+  when: inventory_hostname in groups['master'] and k8s_file.stat.exists
+
+- name: Setup k8s config file
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+  register: config_result
+  ignore_errors: yes
+  when: inventory_hostname in groups['master'] and k8s_file.stat.exists
+
+- name: Setup k8s cluster network plugin
+  shell: "kubectl apply -f {{ canal }} && kubectl apply -f {{ dashboard }}"
+  ignore_errors: yes
+  when: inventory_hostname in groups['master'] and config_result is succeeded and k8s_file.stat.exists
+
+- name: Check network initialed and cluster ready
+  shell: kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes|awk '$2~/^Ready$/{print $2}'
+  register: check_cluster
+  until: check_cluster.stdout == "Ready"
+  retries: 10
+  delay: 10
+  when: inventory_hostname in groups['master']
+
+- name: Set join cluster command
+  set_fact:
+    join_node_command: "{{ init_result.stdout_lines[-2] | regex_replace('\\\\') }} {{ init_result.stdout_lines[-1] }}"
+  run_once: true
+  when: inventory_hostname in groups['master'] and check_cluster.stdout == "Ready"
+
+- name: Join node to cluster
+  shell: "echo {{ join_node_command }} | bash"
+  register: join_result
+  when: inventory_hostname in groups['node']
+
+- name: Get node name list
+  shell: kubectl  get nodes|awk '$3~/<none>/{print $1" "}'
+  register: node_list
+  when: inventory_hostname in groups['master']
+
+- name: Get per node info
+  shell: "for n in {{ node_list.stdout | regex_replace('\\n')}};do kubectl label node $n node-role.kubernetes.io/node=;done"
+  register: get_list
+  when: inventory_hostname in groups['master']
+
+- name: Get cluster info
+  shell: kubectl  get nodes -owide
+  register: cluster_info
+  when: inventory_hostname in groups['master']
+
+- name: show cluster info
+  debug:
+    var: cluster_info.stdout_lines
+  when: inventory_hostname in groups['master']

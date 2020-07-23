@@ -1,0 +1,21 @@
+# tasks file for elasticsearch online
+- name: Add elasticsearch repositories
+  yum_repository:
+    name: elasticrsearch
+    description: elasticsearch local repo
+    file: elasticsearch
+    baseurl: http://mirrors.i<your private repo>.com/rpms
+    gpgcheck: no
+    enabled: yes
+
+- name: Install elasticsearch service online
+  yum:
+    name: "{{ elasticsearch }}"
+    state: present
+
+
+- name: elasticsearch start
+  systemd:
+    state: started
+    name: elasticsearch
+    enabled: yes

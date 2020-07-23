@@ -1,0 +1,35 @@
+#config confluent-zookeeper
+- name: copy zookeeper.properties
+  template:
+    src: zookeeper.properties.j2
+    dest: /etc/kafka/zookeeper.properties
+
+- name: update /var/lib/zookeeper/myid
+  shell: echo "1">/var/lib/zookeeper/myid
+  when: ansible_ssh_host in groups.master
+
+- name: update /var/lib/zookeeper/myid
+  shell: echo "2">/var/lib/zookeeper/myid
+  when: ansible_ssh_host in groups.node1
+
+- name: update /var/lib/zookeeper/myid
+  shell: echo "3">/var/lib/zookeeper/myid
+  when: ansible_ssh_host in groups.node2
+
+#config confluent-kafka
+- name: copy server.properties
+  template:
+    src: server.properties.j2
+    dest: /etc/kafka/server.properties
+
+- name: start confluent-zookeeper service
+  systemd:
+    name: confluent-zookeeper
+    state: started
+    enabled: yes
+
+- name: start confluent-kafka service
+  systemd:
+    name: confluent-kafka
+    state: started
+    enabled: yes

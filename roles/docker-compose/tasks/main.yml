@@ -1,0 +1,73 @@
+---
+#- name: copy yum repo iso
+#  copy: src={{packagedir}}/<your private repo>_yum_repo.iso dest=/root/
+
+#- name: set hostname
+#  copy: content={{hostname}} dest=/etc/hostname
+
+#- name: set hosts
+#  lineinfile: dest=/etc/hosts regexp="^{{ip}} {{hostname}}" line="{{ip}} {{hostname}}"
+
+#- name: set hosts
+#  lineinfile: dest=/etc/hosts regexp="^{{hostvars[item]['ip']}} {{hostvars[item]['hostname']}}" line="{{hostvars[item]['ip']}} {{hostvars[item]['hostname']}}"
+#  with_items: "{{groups['all']}}"
+
+#- name: mount iso
+#  mount: name=/media state=mounted src=/root/<your private repo>_yum_repo.iso fstype=iso9660
+
+#- name: set yum repo
+#  template: src=<your private repo>.repo dest=/etc/yum.repos.d/<your private repo>.repo
+
+
+- name: copy docker-compose.rpm file to remote
+  unarchive: src={{packagedir}}/docker/docker-compose.tar.gz dest=/home/work/
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: install docker-compose from local rpm packge
+  yum: name="/home/work/docker-compose/{{ item }}.rpm" state=present 
+  with_items:
+    - docker-compose-1.18.0-4.el7.noarch
+    - libyaml-0.1.4-11.el7_0.x86_64
+    - openssl-1.0.2k-16.el7_6.1.x86_64
+    - openssl-libs-1.0.2k-16.el7_6.1.x86_64
+    - python36-3.6.8-1.el7.x86_64
+    - python36-cached_property-1.5.1-2.el7.noarch
+    - python36-chardet-2.3.0-6.el7.noarch
+    - python36-docker-2.6.1-3.el7.noarch
+    - python36-dockerpty-0.4.1-10.el7.noarch
+    - python36-docker-pycreds-0.2.1-2.el7.noarch
+    - python36-docopt-0.6.2-8.el7.noarch
+    - python36-idna-2.7-2.el7.noarch
+    - python36-jsonschema-2.5.1-4.el7.noarch
+    - python36-libs-3.6.8-1.el7.x86_64
+    - python36-pysocks-1.6.8-6.el7.noarch
+    - python36-PyYAML-3.11-4.el7.x86_64
+    - python36-requests-2.12.5-3.el7.noarch
+    - python36-setuptools-39.2.0-3.el7.noarch
+    - python36-six-1.11.0-3.el7.noarch
+    - python36-texttable-1.4.0-2.el7.noarch
+    - python36-urllib3-1.19.1-5.el7.noarch
+    - python36-websocket-client-0.47.0-2.el7.noarch
+  become_user: root
+  become_method: sudo
+
+- name: copy docker-compose.yml to remote
+  copy: src={{packagedir}}/docker/docker-compose.yml dest=/home/work/docker-compose/docker-compose.yml owner=root group=root 
+
+- name: start docker container
+  shell: docker-compose -f /home/work/docker-compose/docker-compose.yml  up -d
+ 
+  #- name: create /fwdata dir
+#  file: path=/fwdata state=directory owner=work group=work
+#  when: fwdata_dir is undefined
+
+#- name: create fwdata dir
+#  file: path={{fwdata_dir}} state=directory owner=work group=work
+#  when: fwdata_dir is defined
+#
+#- name: create fwdata link
+#  file: src={{fwdata_dir}} dest=/fwdata state=link owner=work group=work
+#  when: fwdata_dir is defined
+

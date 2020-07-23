@@ -1,0 +1,59 @@
+- name: Unarchive a file that is already on the remote machine
+  unarchive:      
+    src: "{{ packagedir }}/redis.zip"
+    dest: /tmp
+    
+- name: Install redis server
+  yum:
+    name: 
+      - /tmp/redis/redis-4.0.14-1.el7.x86_64.rpm
+      - /tmp/redis/redis-devel-4.0.14-1.el7.x86_64.rpm
+      - /tmp/redis/jemalloc-3.6.0-1.el7.art.x86_64.rpm  
+        # - /tmp/redis/redis-trib-4.0.14-1.el7.noarch.rpm
+    state: present
+
+- name: Set redis server password
+  lineinfile:
+    path: /etc/redis.conf
+    regexp: "^# requirepass.*"
+    line: "requirepass {{ redis_pass }}"
+  when: redis_pass is defined and redis_pass != ""
+
+- name: Start redis server
+  systemd:
+    name: redis
+    state: started
+    enabled: yes
+  register: start_redis
+
+- name: Clean temp file
+  file:
+    path: /tmp/redis
+    state: absent
+  when: start_redis is not failed
+
+- name: copy redis.conf
+  template: 
+    src: redis.conf.j2 
+    dest: /etc/redis.conf 
+  when: cluster == "true"   
+
+- name: copy redis-sentinel.conf
+  template: 
+    src: redis-sentinel.conf.j2
+    dest: /etc/redis-sentinel.conf
+  when: cluster == "true"
+  
+- name: Start redis server
+  systemd:
+    name: redis
+    state: restarted
+    enabled: yes
+  register: start_redis
+
+- name: start redis sentinel
+  shell: /usr/bin/redis-sentinel /etc/redis-sentinel.conf
+  when: cluster == "true" 
+
+
+

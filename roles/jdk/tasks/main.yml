@@ -1,0 +1,18 @@
+---
+- name: unarchive and install jdk
+  unarchive: src={{packagedir}}/jdk1.8.0_171.tar.gz dest=/home/work/ creates=/home/work/jdk1.8.0_171
+  become: true
+  become_user: work
+  become_method: sudo
+
+- name: create symlink
+  file: path=/home/work/jdk state=link src=/home/work/jdk1.8.0_171
+  become: true
+  become_user: work
+  become_method: sudo
+
+- name: set environment variable JAVA_HOME
+  lineinfile: dest=/etc/profile regexp="^export JAVA_HOME" line="export JAVA_HOME=/home/work/jdk"
+
+- name: set environment viriable PATH
+  lineinfile: dest=/etc/profile regexp="^export PATH=\$JAVA_HOME/bin/" line="export PATH=$JAVA_HOME/bin/:$PATH"

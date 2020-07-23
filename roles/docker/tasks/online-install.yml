@@ -1,0 +1,21 @@
+---
+# tasks file for docker online
+- name: Add docker repositories
+  yum_repository:
+    name: docker
+    description: Docker CE YUM repo
+    file: docker
+    baseurl: https://download.docker.com/linux/centos/7/x86_64/stable
+    gpgcheck: no
+    enabled: yes
+
+- name: Install docker-ce service online
+  yum:
+    name: docker-ce
+    state: present
+
+- name: docker service start
+  systemd:
+    state: started
+    name: docker
+    enabled: yes
