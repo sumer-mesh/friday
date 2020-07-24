@@ -1,0 +1,10 @@
+---
+# if you want to install more packages, just add the package name into the below list.
+- name: Install common package for Debain series
+  apt:
+    pkg:
+      - bash-completion
+      - vim
+      - net-tools
+    state: latest
+    update_cache: yes

@@ -1,0 +1,43 @@
+---
+# if you want to install more packages, just add the package name into the below list.
+- name: Install common package for Redhat series
+  yum:
+    name:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+      - conntrack-tools
+      - ebtables
+      - socat
+      - ipset
+    state: latest
+
+- name: Add docker repositories
+  yum_repository:
+    name: docker
+    description: Docker CE YUM repo
+    file: docker
+    baseurl: https://download.docker.com/linux/centos/7/x86_64/stable
+    gpgcheck: no
+    enabled: yes
+
+- name: Install docker-ce
+  yum:
+    name: docker-ce
+    state: present
+
+- name: Ensure docker is start
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Copy docker config
+  copy:
+    src: daemon.json
+    dest: /etc/docker/
+  notify:
+    - restart docker daemon
+
+- name: Exec docker handlers
+  meta: flush_handlers
