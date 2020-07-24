@@ -1,0 +1,4 @@
+{
+    "init": true,
+    "init-path": "/usr/bin/docker-init"
+}
