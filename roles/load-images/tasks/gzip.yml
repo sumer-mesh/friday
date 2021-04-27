@@ -1,0 +1,30 @@
+---
+# Load gzipped tarballs onto remote host
+- name: Get temporary file on remote machine
+  tempfile:
+    state: file
+    suffix: ".tar.gz"
+  register: remote_archive
+- name: Get temporary file on remote machine
+  tempfile:
+    state: file
+    suffix: ".tar"
+  register: remote_tar
+- name: "Copy {{ item }} to remote host"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ remote_archive.path }}"
+- name: Load image
+  shell: "gunzip -c {{ remote_archive.path }} | docker load"
+  become: "{{ docker_become }}"
+  args:
+    warn: False
+- name: Delete Temporary File on Remote
+  file:
+    path: "{{ temp_item }}"
+    state: absent
+  with_items:
+    - "{{ remote_archive.path }}"
+    - "{{ remote_tar.path }}"
+  loop_control:
+    loop_var: temp_item

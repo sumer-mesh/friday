@@ -1,0 +1,6 @@
+---
+# - include: pull.yml
+- include: tars.yml
+  with_items: "{{ tars }}"
+# - include: gzip.yml
+#   with_items: "{{ gzips }}"

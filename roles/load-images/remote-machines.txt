@@ -1,0 +1,5 @@
+[master]
+master ansible_connection=locals
+
+[workers]
+172.16.21.183 ansible_ssh_user=deepliu  ansible_ssh_pass=123  ansible_ssh_port=22

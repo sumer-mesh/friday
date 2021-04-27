@@ -1,0 +1,14 @@
+---
+- name: Load Images
+  hosts: workers
+  vars:
+    images:
+      - hello-world:latest
+      - alpine:3.12
+      - busybox:latest
+    tars:
+      - "../tarballs/hello-world.tar"
+      - "../tarballs/alpine.tar"
+      - "../tarballs/busybox.tar"
+  roles:
+    - role: "{{ playbook_dir }}/../"

@@ -1,0 +1,56 @@
+---
+# Steps to pull and load images from registries
+- name: Pull images to control machine
+  delegate_to: localhost
+  docker_image:
+    name: "{{ item }}"
+    force: "{{ force_pull_images | default(False) }}"
+    state: present
+  with_items: "{{ images }}"
+  when: images
+- name: Get temporary file on control machine
+  delegate_to: localhost
+  tempfile:
+    state: file
+    suffix: ".tar.gz"
+  register: docker_images_archive_control
+  when: images
+- name: "Tar and gzip images on control machine"
+  delegate_to: localhost
+  shell: "docker save {{ images | join(' ') }} | gzip > {{ docker_images_archive_control.path }}"
+  args:
+    warn: False
+  when: images
+- name: Get temporary file on remote machine
+  tempfile:
+    state: file
+    suffix: ".tar.gz"
+  register: docker_images_archive_remote
+  when: images
+- name: "Copy archive to remote"
+  copy:
+    src: "{{ docker_images_archive_control.path }}"
+    dest: "{{ docker_images_archive_remote.path }}"
+  when: images
+- name: Ungzip on remote
+  shell: "gzip -d {{ docker_images_archive_remote.path }}"
+  args:
+    warn: False
+  when: images
+- name: Load image
+  shell: "docker load -i {{ docker_images_archive_remote.path | regex_replace('\\.gz$', '') }}"
+  become: "{{ docker_become }}"
+  args:
+    warn: False
+  when: images
+- name: "Delete control temporary archive {{ docker_images_archive_control.path }}"
+  file:
+    path: "{{ docker_images_archive_control.path }}"
+    state: absent
+  delegate_to: localhost
+  when: images
+- name: "Delete remote temporary archive {{ docker_images_archive_remote.path }}"
+  file:
+    path: "{{ docker_images_archive_remote.path  | regex_replace('\\.gz$', '') }}"
+    state: absent
+  when: images

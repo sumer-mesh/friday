@@ -5,6 +5,8 @@
 
 ## Quick Start
 
+Please cd the roles/every-folders to run the ansible command, every folder is separate independence
+
 ```
 #
 # Create the new machine with Ubuntu
