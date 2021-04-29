@@ -36,6 +36,8 @@ $ ansible --list-hosts worker
 # Check the file
 ansible -m command -a "ls" all
 
+# run container and mount code 
+docker run --name test-rc3 -it --sig-proxy=false -a STDOUT -a STDERR --mount source=/home/aisuko/Documents/vscode-dev-containers/containers/azure-ansible,target=/workspace,type=bind,consistency=delegated aisuko/ansible:2.10.8-rc1 /bin/bash
 
 -------------------------------------------------------------------------------------
 # Add your hosts to the configuration `remote-machines.txt` at the root folder
